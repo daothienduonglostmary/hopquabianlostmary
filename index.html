@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lostmary Đảo Thiên Đường</title>
+    <style>
+        /* Nền biển/đảo nhiệt đới đẹp hơn */
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(to bottom, #4facfe 0%, #00f2fe 100%), 
+                        url('https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1353&q=80');
+            background-size: cover;
+            background-attachment: fixed;
+            background-blend-mode: overlay;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            color: #fff;
+        }
+
+        h1 {
+            text-shadow: 2px 2px 8px rgba(0,0,0,0.5);
+            margin-bottom: 10px;
+            text-align: center;
+        }
+
+        .status-panel {
+            background: rgba(0, 0, 0, 0.6);
+            padding: 15px 25px;
+            border-radius: 15px;
+            margin-bottom: 20px;
+            backdrop-filter: blur(5px);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            text-align: center;
+        }
+
+        /* Lưới 24 hộp quà (khoảng 20-30 hộp) */
+        .grid-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+            gap: 20px;
+            max-width: 800px;
+            width: 100%;
+            padding: 10px;
+        }
+
+        /* Hiệu ứng lật hộp 3D */
+        .box-wrapper {
+            perspective: 1000px;
+            aspect-ratio: 1;
+            cursor: pointer;
+        }
+
+        .box-card {
+            width: 100%;
+            height: 100%;
+            position: relative;
+            transform-style: preserve-3d;
+            transition: transform 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        .box-wrapper.opened .box-card {
+            transform: rotateY(180deg);
+        }
+
+        .box-front, .box-back {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            backface-visibility: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            border-radius: 12px;
+            box-shadow: 0 8px 16px rgba(0,0,0,0.2);
+        }
+
+        /* Mặt trước: Hộp quà chưa mở */
+        .box-front {
+            background: linear-gradient(135deg, #ff5252 0%, #c62828 100%);
+            border: 3px solid #ffd700;
+            font-size: 2rem;
+        }
+
+        .box-front::after {
+            content: "🎁";
+        }
+
+        /* Mặt sau: Phần thưởng bên trong */
+        .box-back {
+            background: rgba(255, 255, 255, 0.95);
+            color: #333;
+            transform: rotateY(180deg);
+            font-size: 1.1rem;
+            font-weight: bold;
+            flex-direction: column;
+            padding: 5px;
+            text-align: center;
+            box-sizing: border-box;
+        }
+
+        .box-back .icon {
+            font-size: 1.8rem;
+            margin-bottom: 5px;
+        }
+
+        .disabled {
+            opacity: 0.6;
+            cursor: not-allowed !important;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>🏝️ Lostmary Đảo Thiên Đường 🏝️</h1>
+    
+    <div class="status-panel">
+        <div id="user-status">Đang tải thông tin người chơi...</div>
+        <div id="game-message" style="margin-top: 8px; font-weight: bold; color: #ffeb3b;">Hãy chọn 1 hộp quà duy nhất của bạn!</div>
+    </div>
+
+    <div class="grid-container" id="grid"></div>
+
+    <script>
+        function playOpenSound() {
+            const ctx = new (window.AudioContext || window.webkitAudioContext)();
+            
+            // Âm mở hộp trầm ấm
+            const osc1 = ctx.createOscillator();
+            const gain1 = ctx.createGain();
+            osc1.type = 'sine';
+            osc1.frequency.setValueAtTime(150, ctx.currentTime);
+            osc1.frequency.exponentialRampToValueAtTime(300, ctx.currentTime + 0.1);
+            gain1.gain.setValueAtTime(0.5, ctx.currentTime);
+            gain1.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.1);
+            osc1.connect(gain1);
+            gain1.connect(ctx.destination);
+            osc1.start();
+            osc1.stop(ctx.currentTime + 0.1);
+
+            // Tiếng leng keng may mắn phát sau đó chút xíu
+            setTimeout(() => {
+                const osc2 = ctx.createOscillator();
+                const gain2 = ctx.createGain();
+                osc2.type = 'triangle';
+                osc2.frequency.setValueAtTime(600, ctx.currentTime);
+                osc2.frequency.setValueAtTime(900, ctx.currentTime + 0.08);
+                osc2.frequency.setValueAtTime(1200, ctx.currentTime + 0.15);
+                gain2.gain.setValueAtTime(0.3, ctx.currentTime);
+                gain2.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3);
+                osc2.connect(gain2);
+                gain2.connect(ctx.destination);
+                osc2.start();
+                osc2.stop(ctx.currentTime + 0.3);
+            }, 50);
+        }
+    </script>
+
+    <script>
+        // Cấu hình danh sách phần thưởng gốc (Có Hộp Thiên Đường, Hộp Phạt...)
+        const rewardPool = [
+            { text: "Hộp Thiên Đường", points: "+100 Điểm", icon: "👑", color: "#fff9c4" },
+            { text: "Hộp Phạt", points: "-50 Điểm", icon: "💀", color: "#ffcdd2" },
+            { text: "Cướp Điểm", points: "Cướp điểm", icon: "🥷", color: "#e1bee7" },
+            { text: "Đổi Điểm", points: "Đổi điểm", icon: "🔄", color: "#b2dfdb" },
+            ...Array(6).fill({ text: "Quà Nhỏ", points: "+10 Điểm", icon: "⭐", color: "#c8e6c9" }),
+            ...Array(6).fill({ text: "Quà Vừa", points: "+20 Điểm", icon: "🌟", color: "#bbdefb" }),
+            ...Array(8).fill({ text: "May Mắn", points: "+50 Điểm", icon: "🍀", color: "#d1c4e9" })
+        ];
+
+        // Tự xáo trộn phần thưởng mỗi lần tải trang (Thuật toán Fisher-Yates)
+        function shuffle(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+            return array;
+        }
+
+        // Tạo danh sách gồm 24 hộp quà ngẫu nhiên từ pool quà (đạt tiêu chuẩn 20-30 hộp)
+        const activeRewards = shuffle([...rewardPool]).slice(0, 24);
+
+        // Giả lập định danh người dùng trên cùng trình duyệt (Đảm bảo chỉ mở được 1 hộp/người)
+        // Nếu dùng trên Discord, mỗi người mở trên máy họ sẽ tính là 1 người riêng biệt.
+        const userId = localStorage.getItem('lostmary_user_id') || 'user_' + Math.random().toString(36).substr(2, 9);
+        localStorage.setItem('lostmary_user_id', userId);
+
+        const hasOpened = localStorage.getItem('lostmary_opened_box');
+        const grid = document.getElementById('grid');
+        const userStatusText = document.getElementById('user-status');
+        const gameMessage = document.getElementById('game-message');
+
+        // Cập nhật trạng thái hiển thị của User
+        userStatusText.innerText = `Mã ID người chơi: ${userId.toUpperCase()}`;
+
+        // Vẽ các hộp quà ra màn hình
+        activeRewards.forEach((reward, index) => {
+            const wrapper = document.createElement('div');
+            wrapper.className = 'box-wrapper';
+            wrapper.dataset.index = index;
+
+            // Nếu người này đã từng mở quà trước đó rồi
+            if (hasOpened) {
+                wrapper.classList.add('disabled');
+                if (hasOpened == index) {
+                    wrapper.classList.add('opened');
+                    gameMessage.innerText = `Bạn đã mở hộp này rồi! Bạn nhận được: ${reward.text} (${reward.points})`;
+                }
+            }
+
+            const card = document.createElement('div');
+            card.className = 'box-card';
+
+            const front = document.createElement('div');
+            front.className = 'box-front';
+
+            const back = document.createElement('div');
+            back.className = 'box-back';
+            back.style.backgroundColor = reward.color;
+            back.innerHTML = `<div class="icon">${reward.icon}</div><div>${reward.text}</div><div style="font-size:0.85rem; color:#666">${reward.points}</div>`;
+
+            card.appendChild(front);
+            card.appendChild(back);
+            wrapper.appendChild(card);
+            grid.appendChild(wrapper);
+
+            // Sự kiện Click mở quà
+            wrapper.addEventListener('click', function() {
+                if (localStorage.getItem('lostmary_opened_box')) {
+                    alert("Bạn đã mở quà rồi! Mỗi người chỉ được mở duy nhất 1 hộp.");
+                    return;
+                }
+
+                // Chạy âm thanh lật hộp công nghệ Web Audio
+                playOpenSound();
+
+                // Chạy hiệu ứng lật 3D
+                this.classList.add('opened');
+                
+                // Khóa không cho mở thêm
+                localStorage.setItem('lostmary_opened_box', index);
+                gameMessage.innerText = `Chúc mừng! Bạn mở trúng: ${reward.text} (${reward.points})`;
+
+                // Vô hiệu hóa tất cả các hộp còn lại
+                document.querySelectorAll('.box-wrapper').forEach(w => {
+                    if (!w.classList.contains('opened')) w.classList.add('disabled');
+                });
+            });
+        });
+    </script>
+</body>
+</html>
