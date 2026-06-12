@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="vi">
 <head>
@@ -5,7 +6,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Lostmary Đảo Thiên Đường - Sự Kiện Hộp Quà</title>
     <style>
-        /* Nền biển/đảo nhiệt đới đẹp mắt */
         body {
             margin: 0;
             padding: 20px;
@@ -51,7 +51,6 @@
             box-sizing: border-box;
         }
 
-        /* Lưới 20 hộp quà */
         .grid-container {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
@@ -62,7 +61,6 @@
             box-sizing: border-box;
         }
 
-        /* Hiệu ứng lật hộp 3D */
         .box-wrapper {
             perspective: 1000px;
             aspect-ratio: 1;
@@ -93,7 +91,6 @@
             box-shadow: 0 8px 16px rgba(0,0,0,0.2);
         }
 
-        /* Mặt trước: Hộp quà có số thứ tự tự động */
         .box-front {
             background: linear-gradient(135deg, #ff5252 0%, #c62828 100%);
             border: 3px solid #ffd700;
@@ -109,7 +106,6 @@
             font-size: 1.8rem;
         }
 
-        /* Mặt sau: Phần thưởng bên trong */
         .box-back {
             background: rgba(255, 255, 255, 0.95);
             color: #333;
@@ -147,7 +143,7 @@
 <body>
 
     <h1>🏝️ Lostmary Đảo Thiên Đường 🏝️</h1>
-    <div class="subtitle">Sự Kiện Hộp Quà May Mắn</div>
+    <div class="subtitle">Sự Kiện Hộp Quà Cố Định Trận Đấu</div>
     
     <div class="status-panel">
         <div id="user-status">Đang định danh người chơi...</div>
@@ -191,7 +187,7 @@
     </script>
 
     <script>
-        // Danh sách chính xác 20 phần quà theo yêu cầu của bạn
+        // Danh sách chính xác 20 phần quà của bạn
         const baseRewards = [
             { text: "Đại Cát Đại Lợi", points: "+500đ", icon: "👑", color: "#fff9c4" },
             { text: "May Mắn Lớn", points: "+500đ", icon: "👑", color: "#fff9c4" },
@@ -221,36 +217,50 @@
             { text: "Hoán Đổi Vận Mệnh", points: "Đổi điểm của team mình cho 1 team bất kì (tự chọn)", icon: "🔄", color: "#e1f5fe" }
         ];
 
-        // Hàm xáo trộn phần thưởng ngẫu nhiên mỗi lần tải trang
-        function shuffleArray(array) {
-            for (let i = array.length - 1; i > 0; i--) {
-                const j = Math.floor(Math.random() * (i + 1));
-                [array[i], array[j]] = [array[j], array[i]];
+        // ================= THUẬT TOÁN CỐ ĐỊNH VỊ TRÍ QUÀ =================
+        // Bạn có thể đổi chữ "MATCH_1" thành bất kỳ chữ gì (ví dụ: "TRAN_2") để đổi vị trí quà cho trận mới.
+        const secretSeed = "MATCH_1"; 
+
+        function seededShuffle(array, seed) {
+            let hash = 0;
+            for (let i = 0; i < seed.length; i++) {
+                hash = seed.charCodeAt(i) + ((hash << 5) - hash);
+            }
+            
+            let currentIndex = array.length, temporaryValue, randomIndex;
+            while (0 !== currentIndex) {
+                // Tạo số ngẫu nhiên nhưng cố định dựa trên mã hash
+                let x = Math.sin(hash++) * 10000;
+                let randomFloat = x - Math.floor(x);
+                randomIndex = Math.floor(randomFloat * currentIndex);
+                currentIndex -= 1;
+
+                temporaryValue = array[currentIndex];
+                array[currentIndex] = array[randomIndex];
+                array[randomIndex] = temporaryValue;
             }
             return array;
         }
 
-        // Tạo danh sách quà xáo trộn hoàn toàn ngẫu nhiên
-        const activeRewards = shuffleArray([...baseRewards]);
+        // Quà sau khi trộn bằng Seed sẽ luôn luôn cố định vị trí ở mọi máy, mọi lần reset
+        const activeRewards = seededShuffle([...baseRewards], secretSeed);
+        // =================================================================
 
-        // Quản lý định danh người chơi trên iPad/Điện thoại
-        const userId = localStorage.getItem('lostmary_event_v2_uid') || 'TEAM_' + Math.random().toString(36).substr(2, 5).toUpperCase();
-        localStorage.setItem('lostmary_event_v2_uid', userId);
+        const userId = localStorage.getItem('lostmary_event_v3_uid') || 'TEAM_' + Math.random().toString(36).substr(2, 5).toUpperCase();
+        localStorage.setItem('lostmary_event_v3_uid', userId);
         
-        const hasOpenedIndex = localStorage.getItem('lostmary_event_v2_opened');
+        const hasOpenedIndex = localStorage.getItem('lostmary_event_v3_opened');
         const grid = document.getElementById('grid');
         const userStatusText = document.getElementById('user-status');
         const gameMessage = document.getElementById('game-message');
 
         userStatusText.innerHTML = `Mã thiết bị của bạn: <strong style="color: #00f2fe;">${userId}</strong>`;
 
-        // Tạo 20 ô giao diện
         activeRewards.forEach((reward, index) => {
             const wrapper = document.createElement('div');
             wrapper.className = 'box-wrapper';
             wrapper.dataset.index = index;
 
-            // Kiểm tra trạng thái nếu người chơi đã lật hộp trước đó
             if (hasOpenedIndex !== null) {
                 wrapper.classList.add('disabled');
                 if (hasOpenedIndex == index) {
@@ -276,9 +286,8 @@
             wrapper.appendChild(card);
             grid.appendChild(wrapper);
 
-            // Bấm mở quà
             wrapper.addEventListener('click', function() {
-                if (localStorage.getItem('lostmary_event_v2_opened') !== null) {
+                if (localStorage.getItem('lostmary_event_v3_opened') !== null) {
                     alert("Bạn đã thực hiện mở quà rồi! Mỗi thiết bị chỉ được mở duy nhất 1 lần.");
                     return;
                 }
@@ -286,16 +295,14 @@
                 playOpenSound();
                 this.classList.add('opened');
                 
-                localStorage.setItem('lostmary_event_v2_opened', index);
+                localStorage.setItem('lostmary_event_v3_opened', index);
                 gameMessage.innerHTML = `Chúc mừng! Bạn mở hộp số ${index + 1} trúng: <span style="color: #ffeb3b;">${reward.text} (${reward.points})</span>`;
 
-                // Vô hiệu hóa tất cả các hộp còn lại
                 document.querySelectorAll('.box-wrapper').forEach(w => {
                     if (!w.classList.contains('opened')) w.classList.add('disabled');
                 });
 
-                // ================= GỬI DỮ LIỆU ĐẾN DISCORD WEBHOOK =================
-                // HƯỚNG DẪN: Thay link Webhook của bạn vào giữa cặp dấu nháy kép dưới đây nếu muốn theo dõi tự động:
+                // Webhook Discord
                 const discordWebhookUrl = "DÁN_LINK_WEBHOOK_CỦA_BẠN_VÀO_ĐÂY"; 
 
                 if(discordWebhookUrl && discordWebhookUrl !== "DÁN_LINK_WEBHOOK_CỦA_BẠN_VÀO_ĐÂY") {
@@ -310,7 +317,7 @@
                                 { name: "📦 Số Thứ Tự Hộp", value: `Hộp số **${index + 1}**`, inline: true },
                                 { name: "🎯 Phần Thưởng Bốc Được", value: `**${reward.icon} ${reward.text}**\n↳ Hiệu lực: \`${reward.points}\`` }
                             ],
-                            footer: { text: "Hệ thống quản lý điểm Lostmary v2 • " + new Date().toLocaleString('vi-VN') }
+                            footer: { text: "Hệ thống quản lý điểm Lostmary v3 • " + new Date().toLocaleString('vi-VN') }
                         }]
                     };
 
@@ -320,7 +327,6 @@
                         body: JSON.stringify(reportData)
                     }).catch(err => console.log("Lỗi Webhook:", err));
                 }
-                // =================================================================
             });
         });
     </script>
